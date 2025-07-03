@@ -3,7 +3,7 @@ Django
 django-cors-headers
 djangorestframework
 djangorestframework_simplejwt
-psycopg2
+psycopg2-binary
 PyJWT
 sqlparse
 tzdata
