@@ -7,7 +7,8 @@ from .serializers import RegisterUserSerializer, CustomUserSerializer,UserRoleUp
 from .models import CustomUser
 from django.contrib.auth import authenticate, login, logout
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from .serializers import TeamMembershipSerializer
+from team_managements.models import Team
 
 
 # Create your views here.
@@ -36,11 +37,12 @@ class LoginUserView(APIView):
                 "access": str(token.access_token)
             }, status=status.HTTP_200_OK)
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+    
 class LogoutUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        tokenr  = request.get('token')
+        tokenr  = request.data.get('token')
         if tokenr:
             try:
                 token = RefreshToken(tokenr)
@@ -61,33 +63,6 @@ class UserProfileView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
-# class AllUsersView(APIView):
-#     # permission_classes = [IsAdminUser]
-
-#     def get(self, request):
-#         users = CustomUser.objects.all()
-#         serializer = CustomUserSerializer(users, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-#     def delete(self, request, user_id):
-#         try:
-#             user = CustomUser.objects.get(id=user_id)
-#             user.delete()
-#             return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-#         except CustomUser.DoesNotExist:
-#             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-    
-#     def patch(self, request, user_id):
-#         try:
-#             user = CustomUser.objects.get(id=user_id)
-#             serializer = UserRoleUpdateSerializer(user, data=request.data, partial=True)
-#             if serializer.is_valid():
-#                 serializer.save()
-#                 return Response({"message": "User role updated successfully"}, status=status.HTTP_200_OK)
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#         except CustomUser.DoesNotExist:
-#             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 
@@ -125,3 +100,20 @@ class AllUsersView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+class TeamMembershipUpdateView(APIView):
+    # permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def patch(self, request, team_id):
+        try:
+            team = Team.objects.get(id=team_id)
+        except Team.DoesNotExist:
+            return Response({"error": "Team not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = TeamMembershipSerializer(team, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Team updated successfully", "team": serializer.data}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

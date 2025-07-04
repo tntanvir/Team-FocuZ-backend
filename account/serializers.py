@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import CustomUser
+from team_managements.models import Team
 
 
 
@@ -22,12 +23,45 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
+# class CustomUserSerializer(serializers.ModelSerializer):
+
+#     class Meta:
+#         model = CustomUser
+#         fields = ['id','username', 'email', 'Name' ,'Phone','role', 'Address', 'ProfilePicture']
+
 class CustomUserSerializer(serializers.ModelSerializer):
+    teams = serializers.SerializerMethodField()
+    manager_of = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
-        fields = ['id','username', 'email', 'Name' ,'Phone','role' , 'Address', 'ProfilePicture']
+        fields = ['id', 'username', 'email', 'Name', 'Phone', 'role', 'teams', 'manager_of', 'Address', 'ProfilePicture']
+
+    def get_teams(self, obj):
+        return [team.name for team in obj.teams.all()]
+
+    def get_manager_of(self, obj):
+        return [team.name for team in obj.managed_teams.all()]
+    
 
 class UserRoleUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['role']
+        fields = ['role', 'Name', 'Phone', 'Address']
+
+
+class TeamMembershipSerializer(serializers.ModelSerializer):
+    users = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(),
+        many=True,
+        required=False
+    )
+    manager = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(),
+        required=False,
+        allow_null=True
+    )
+
+    class Meta:
+        model = Team
+        fields = ['id', 'name', 'users', 'manager']

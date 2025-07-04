@@ -43,11 +43,21 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    
     'account',
-    # 'media',
+    'team_managements',
     'media.apps.MediaConfig',
     'corsheaders',
 ]
+
+
+SIMPLE_JWT = {
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ROTATE_REFRESH_TOKENS': True,
+    
+ 
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
