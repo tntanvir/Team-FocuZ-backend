@@ -90,17 +90,41 @@ class AllUsersView(APIView):
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+    # def patch(self, request, user_id):
+    #     try:
+    #         user = CustomUser.objects.get(id=user_id)
+    #         serializer = UserRoleUpdateSerializer(user, data=request.data, partial=True)
+    #         if serializer.is_valid():
+    #             serializer.save()
+    #             return Response({"message": "User role updated successfully"}, status=status.HTTP_200_OK)
+    #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #     except CustomUser.DoesNotExist:
+    #         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
     def patch(self, request, user_id):
         try:
             user = CustomUser.objects.get(id=user_id)
-            serializer = UserRoleUpdateSerializer(user, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response({"message": "User role updated successfully"}, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except CustomUser.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "ইউজার খুঁজে পাওয়া যায়নি"}, status=status.HTTP_404_NOT_FOUND)
 
+        serializer = UserRoleUpdateSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            updated_user = serializer.save()
+            
+            # যদি ম্যানেজার হিসেবে সেট করা হয় তাহলে টিম আপডেট করো (যদি team_id থাকে)
+            team_id = request.data.get('team_id')
+            if updated_user.role == 'manager' and team_id:
+                try:
+                    team = Team.objects.get(id=team_id)
+                    team.manager = updated_user
+                    team.save()
+                except Team.DoesNotExist:
+                    return Response({"error": "টিম খুঁজে পাওয়া যায়নি"}, status=404)
+
+            return Response({
+                "message": "ইউজারের তথ্য সফলভাবে আপডেট হয়েছে",
+                "user": CustomUserSerializer(updated_user).data
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TeamMembershipUpdateView(APIView):

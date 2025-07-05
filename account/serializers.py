@@ -29,26 +29,66 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 #         model = CustomUser
 #         fields = ['id','username', 'email', 'Name' ,'Phone','role', 'Address', 'ProfilePicture']
 
+# class CustomUserSerializer(serializers.ModelSerializer):
+#     teams = serializers.SerializerMethodField()
+#     manager_of = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = CustomUser
+#         fields = ['id', 'username', 'email', 'Name', 'Phone', 'role', 'teams', 'manager_of', 'Address', 'ProfilePicture']
+
+#     def get_teams(self, obj):
+#         return [team.name for team in obj.teams.all()]
+
+#     def get_manager_of(self, obj):
+#         # Safe access: might raise error if not assigned yet
+#         try:
+#             return obj.managed_team.name if obj.managed_team else None
+#         except Team.DoesNotExist:
+#             return None
 class CustomUserSerializer(serializers.ModelSerializer):
     teams = serializers.SerializerMethodField()
     manager_of = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'Name', 'Phone', 'role', 'teams', 'manager_of', 'Address', 'ProfilePicture']
+        fields = [
+            'id', 'username', 'email', 'Name', 'Phone', 'role',
+            'teams', 'manager_of', 'Address', 'ProfilePicture'
+        ]
 
     def get_teams(self, obj):
-        return [team.name for team in obj.teams.all()]
+        return [
+            {
+                "id": team.id,
+                "name": team.name
+            }
+            for team in obj.teams.all()
+        ]
 
     def get_manager_of(self, obj):
-        return [team.name for team in obj.managed_teams.all()]
+        try:
+            return {
+                "id": obj.managed_team.id,
+                "name": obj.managed_team.name
+            } if obj.managed_team else None
+        except Team.DoesNotExist:
+            return None  
     
-
+    
 class UserRoleUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['role', 'Name', 'Phone', 'Address']
 
+    def validate(self, data):
+        user = self.instance
+
+        # একাধিক টিমে অ্যাসাইন প্রতিরোধ
+        if data.get('team') and CustomUser.objects.filter(team=data['team'], id__ne=user.id).filter(id=user.id).exists():
+            raise serializers.ValidationError("এই ইউজার ইতোমধ্যে অন্য টিমে আছে।")
+
+        return data
 
 class TeamMembershipSerializer(serializers.ModelSerializer):
     users = serializers.PrimaryKeyRelatedField(

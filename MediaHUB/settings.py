@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     
     'account',
     'team_managements',
+    'reports',
     'media.apps.MediaConfig',
     'corsheaders',
 ]
