@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import CustomUser
 from team_managements.models import Team
-
+from django.contrib.auth import password_validation
+from django.core.exceptions import ValidationError
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
@@ -105,3 +106,28 @@ class TeamMembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
         fields = ['id', 'name', 'users', 'manager']
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        user = self.context['request'].user
+        
+        # Check if the old password is correct
+        if not user.check_password(data['old_password']):
+            raise serializers.ValidationError("The old password is incorrect.")
+        
+        # Check if the new password matches the confirmation
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError("The new passwords do not match.")
+        
+        # Validate the new password strength using Django's built-in password validation
+        try:
+            password_validation.validate_password(data['new_password'], user)
+        except ValidationError as e:
+            raise serializers.ValidationError({"new_password": e.messages})
+        
+        return data

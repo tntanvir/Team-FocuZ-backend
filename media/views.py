@@ -7,6 +7,7 @@ from django.utils.timezone import now
 from datetime import timedelta
 from .models import  Media, DailyReport, WeeklyReport, MonthlyReport
 from .serializers import MediaSerializer
+from rest_framework.exceptions import ValidationError
 
 
 class MediaView(APIView):
@@ -28,11 +29,42 @@ class MediaView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
+    # def post(self, request):
+    #     serializer = MediaSerializer(data=request.data)
+    #     if serializer.is_valid():
+    #         serializer.save(user=request.user)
+    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def post(self, request):
-        serializer = MediaSerializer(data=request.data)
+        user = request.user
+        file_url = request.data.get('file')
+        title = request.data.get('title')
+        tag = request.data.get('tag')
+
+        # Ensure all fields are provided and valid
+        if not file_url or not title or not tag:
+            return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check the file extension based on role
+        role = user.role
+        if role == 'script writer' and not file_url.endswith('.txt'):
+            return Response({"error": "Script Writers can only upload text files."}, status=status.HTTP_400_BAD_REQUEST)
+        elif role == 'voice artist' and not file_url.endswith(('.mp3', '.wav', '.aac')):
+            return Response({"error": "Voice Artists can only upload audio files."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create the Media object and save
+        media_payload = {
+            'user': user.id,
+            'title': title,
+            'tag': tag,
+            'file': file_url,
+        }
+
+        serializer = MediaSerializer(data=media_payload)
         if serializer.is_valid():
-            serializer.save(user=request.user)
+            serializer.save(user=user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, pk):
