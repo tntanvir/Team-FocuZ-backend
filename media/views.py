@@ -8,6 +8,7 @@ from datetime import timedelta
 from .models import  Media, DailyReport, WeeklyReport, MonthlyReport
 from .serializers import MediaSerializer
 from rest_framework.exceptions import ValidationError
+from team_managements.models import Team
 
 
 class MediaView(APIView):
@@ -116,8 +117,29 @@ class FileUploadReportView(APIView):
 
 
 class AdminData(APIView):
-    def get(self,request):
-        data = Media.objects.filter(user__role = 'admin').order_by('-uploaded_at')
-        serializer = MediaSerializer(data, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+   
+     def get(self, request):
+        user = request.user
 
+        # Check if the user is authenticated
+        if user.is_authenticated:
+            # Query the media for admins
+            admin_media = Media.objects.filter(user__role='admin').order_by('-uploaded_at')
+
+            # Query the media for the teams the current user is part of
+            user_teams = Team.objects.filter(users=user)
+            team_media = Media.objects.filter(user__teams__in=user_teams).order_by('-uploaded_at')
+
+            # Combine admin and team media
+            combined_media = admin_media | team_media  # Using OR to combine both querysets
+
+            # Serialize the combined media data
+            serializer = MediaSerializer(combined_media, many=True)
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        else:
+            # If the user is not authenticated, return a 401 Unauthorized response
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+
+    

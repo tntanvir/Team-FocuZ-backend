@@ -7,6 +7,7 @@ class Media(models.Model):
     file = models.URLField(max_length=1000 ,null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     tag = models.CharField(max_length=100,choices=[('video','Video'),('script','Script'),('voice','Voice')], null=True, blank=True)
+    team = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return self.title
