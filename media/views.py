@@ -111,3 +111,13 @@ class FileUploadReportView(APIView):
             "weekly": weekly_data,
             "monthly": monthly_data,
         }, status=status.HTTP_200_OK)
+
+
+
+
+class AdminData(APIView):
+    def get(self,request):
+        data = Media.objects.filter(user__role = 'admin').order_by('-uploaded_at')
+        serializer = MediaSerializer(data, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

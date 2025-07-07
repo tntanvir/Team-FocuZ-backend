@@ -9,7 +9,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'Name' ,'Phone', 'Address', 'ProfilePicture','password']
+        fields = ['username', 'email', 'Name' ,'Phone', 'Address', 'ProfilePicture','role','password']
 
     def create(self, validated_data):
         user = CustomUser(
@@ -18,35 +18,14 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             Name=validated_data.get('Name', ''),
             Phone=validated_data.get('Phone', ''),
             Address=validated_data.get('Address', ''),
+            role=validated_data.get('role'),  
             ProfilePicture=validated_data.get('ProfilePicture', ''),
         )
-        user.set_password(validated_data['password'])
+        user.set_password(validated_data['password'])   
+        user.is_active = False     
         user.save()
         return user
 
-# class CustomUserSerializer(serializers.ModelSerializer):
-
-#     class Meta:
-#         model = CustomUser
-#         fields = ['id','username', 'email', 'Name' ,'Phone','role', 'Address', 'ProfilePicture']
-
-# class CustomUserSerializer(serializers.ModelSerializer):
-#     teams = serializers.SerializerMethodField()
-#     manager_of = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = CustomUser
-#         fields = ['id', 'username', 'email', 'Name', 'Phone', 'role', 'teams', 'manager_of', 'Address', 'ProfilePicture']
-
-#     def get_teams(self, obj):
-#         return [team.name for team in obj.teams.all()]
-
-#     def get_manager_of(self, obj):
-#         # Safe access: might raise error if not assigned yet
-#         try:
-#             return obj.managed_team.name if obj.managed_team else None
-#         except Team.DoesNotExist:
-#             return None
 class CustomUserSerializer(serializers.ModelSerializer):
     teams = serializers.SerializerMethodField()
     manager_of = serializers.SerializerMethodField()
@@ -55,7 +34,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             'id', 'username', 'email', 'Name', 'Phone', 'role',
-            'teams', 'manager_of', 'Address', 'ProfilePicture'
+            'teams', 'manager_of', 'Address', 'ProfilePicture','is_active'
         ]
 
     def get_teams(self, obj):
@@ -80,7 +59,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 class UserRoleUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['role', 'Name', 'Phone', 'Address']
+        fields = ['role', 'Name', 'Phone', 'Address','is_active']
 
     def validate(self, data):
         user = self.instance
@@ -89,7 +68,13 @@ class UserRoleUpdateSerializer(serializers.ModelSerializer):
         if data.get('team') and CustomUser.objects.filter(team=data['team'], id__ne=user.id).filter(id=user.id).exists():
             raise serializers.ValidationError("এই ইউজার ইতোমধ্যে অন্য টিমে আছে।")
 
+              
+        # Ensure that an admin can update is_active (if included)
+        
         return data
+
+
+
 
 class TeamMembershipSerializer(serializers.ModelSerializer):
     users = serializers.PrimaryKeyRelatedField(
