@@ -30,17 +30,13 @@ class MediaView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
-    # def post(self, request):
-    #     serializer = MediaSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         serializer.save(user=request.user)
-    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+   
     def post(self, request):
         user = request.user
         file_url = request.data.get('file')
         title = request.data.get('title')
         tag = request.data.get('tag')
+        team = request.data.get('team')
 
         # Ensure all fields are provided and valid
         if not file_url or not title or not tag:
@@ -59,6 +55,7 @@ class MediaView(APIView):
             'title': title,
             'tag': tag,
             'file': file_url,
+            'team': team if team else None,  
         }
 
         serializer = MediaSerializer(data=media_payload)
@@ -118,7 +115,30 @@ class FileUploadReportView(APIView):
 
 class AdminData(APIView):
    
-     def get(self, request):
+    #  def get(self, request):
+    #     user = request.user
+
+    #     # Check if the user is authenticated
+    #     if user.is_authenticated:
+    #         # Query the media for admins
+    #         admin_media = Media.objects.filter(user__role='admin').order_by('-uploaded_at')
+
+    #         # Query the media for the teams the current user is part of
+    #         user_teams = Team.objects.filter(users=user)
+    #         team_media = Media.objects.filter(user__teams__in=user_teams).order_by('-uploaded_at')
+
+    #         # Combine admin and team media
+    #         combined_media = admin_media | team_media  # Using OR to combine both querysets
+
+    #         # Serialize the combined media data
+    #         serializer = MediaSerializer(combined_media, many=True)
+
+    #         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    #     else:
+    #         # If the user is not authenticated, return a 401 Unauthorized response
+    #         return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+    def get(self, request):
         user = request.user
 
         # Check if the user is authenticated
@@ -126,12 +146,17 @@ class AdminData(APIView):
             # Query the media for admins
             admin_media = Media.objects.filter(user__role='admin').order_by('-uploaded_at')
 
-            # Query the media for the teams the current user is part of
+            # Get the teams the current user is part of
             user_teams = Team.objects.filter(users=user)
-            team_media = Media.objects.filter(user__teams__in=user_teams).order_by('-uploaded_at')
 
-            # Combine admin and team media
-            combined_media = admin_media | team_media  # Using OR to combine both querysets
+            # Filter the admin media by team name (check if the admin media's team is in the user's teams)
+            admin_media_filtered = admin_media.filter(team__in=[team.name for team in user_teams])
+
+            # Query the media for the teams the current user is part of
+            team_media = Media.objects.filter(team__in=[team.name for team in user_teams]).order_by('-uploaded_at')
+
+            # Combine filtered admin media and team media
+            combined_media = admin_media_filtered | team_media  # Using OR to combine both querysets
 
             # Serialize the combined media data
             serializer = MediaSerializer(combined_media, many=True)
