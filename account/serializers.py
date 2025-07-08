@@ -54,6 +54,24 @@ class CustomUserSerializer(serializers.ModelSerializer):
             } if obj.managed_team else None
         except Team.DoesNotExist:
             return None  
+        
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['Name', 'Phone', 'Address', 'ProfilePicture']
+
+    # def validate(self, data):
+    #     user = self.instance
+
+    #     # Ensure that the user is not trying to change their username or email
+    #     if 'username' in data or 'email' in data:
+    #         raise serializers.ValidationError("Username and email cannot be changed.")
+
+    #     # Validate phone number format if needed
+    #     if 'Phone' in data and not data['Phone'].isdigit():
+    #         raise serializers.ValidationError("Phone number must contain only digits.")
+
+    #     return data
     
     
 class UserRoleUpdateSerializer(serializers.ModelSerializer):
