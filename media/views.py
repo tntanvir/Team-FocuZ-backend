@@ -12,48 +12,131 @@ from team_managements.models import Team
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 
 
+# class MediaPagination(PageNumberPagination):
+#     page_size = 9  # Set the number of items per page
+#     page_size_query_param = 'page_size'  # Allows the user to specify a custom page size (optional)
+#     max_page_size = 100  # Optional: to limit the maximum number of items per page
+
+# class MediaView(APIView):
+#     permission_classes = [IsAuthenticated]  
+   
+
+
+
+#     def get(self, request):
+#         user = request.user
+
+#         # Check if the user is authenticated
+#         if user.is_authenticated:
+#             # Check if the user is an admin (using is_staff for simplicity)
+#             if user.is_staff:  # Admins should have is_staff set to True
+#                 # Admin can see all media files
+#                 media = Media.objects.all().order_by('-uploaded_at')
+#             else:
+#                 # Get the teams the current user is part of
+#                 user_teams = Team.objects.filter(users=user)
+
+#                 # Get the names of the teams the user is part of
+#                 team_names = [team.name for team in user_teams]
+
+#                 # Fetch all media related to the user's teams
+#                 team_media = Media.objects.filter(team__in=team_names).order_by('-uploaded_at')
+
+#                 # Combine all team media for the user
+#                 media = team_media
+
+#             # Apply pagination to the media queryset
+#             paginator = MediaPagination()
+#             paginated_media = paginator.paginate_queryset(media, request)
+
+#             # Serialize the paginated media data
+#             serializer = MediaSerializer(paginated_media, many=True)
+
+#             # Return the paginated response
+#             return paginator.get_paginated_response(serializer.data)
+
+#         else:
+#             # If the user is not authenticated, return a 401 Unauthorized response
+#             return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+
+# class MediaPagination(PageNumberPagination):
+#     page_size = 9  # Set the number of items per page
+#     page_size_query_param = 'page_size'  # Allows the user to specify a custom page size (optional)
+#     max_page_size = 100  # Optional: to limit the maximum number of items per page
+
+# class MediaView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+
+#         # Filter query parameters for team name and category
+#         team_filter = request.query_params.get('team', None)
+#         category_filter = request.query_params.get('category', None)
+
+#         # Check if the user is authenticated
+#         if user.is_authenticated:
+#             if user.is_staff:  # Admins can view all media
+#                 media = Media.objects.all().order_by('-uploaded_at')
+#             else:
+#                 # Get the teams the current user is part of
+#                 user_teams = Team.objects.filter(users=user)
+#                 team_names = [team.name for team in user_teams]
+#                 media = Media.objects.filter(team__in=team_names).order_by('-uploaded_at')
+
+#             # Apply team filter if provided
+#             if team_filter:
+#                 media = media.filter(team__name=team_filter)
+
+#             # Apply category filter if provided (e.g., "video", "audio", etc.)
+#             if category_filter:
+#                 media = media.filter(tag=category_filter)
+
+#             # Apply pagination to the media queryset
+#             paginator = MediaPagination()
+#             paginated_media = paginator.paginate_queryset(media, request)
+
+#             # Serialize the paginated media data
+#             serializer = MediaSerializer(paginated_media, many=True)
+
+#             # Return the paginated response
+#             return paginator.get_paginated_response(serializer.data)
+
+#         else:
+#             # If the user is not authenticated, return a 401 Unauthorized response
+#             return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+class MediaPagination(PageNumberPagination):
+    page_size = 9  # Set the number of items per page
+    page_size_query_param = 'page_size'  # Allows the user to specify a custom page size (optional)
+    max_page_size = 100  # Optional: to limit the maximum number of items per page
+
 class MediaView(APIView):
-    permission_classes = [IsAuthenticated]  # No authentication required for this view
-    # def get(self, request, pk=None):
-    #     if pk:
-    #         try:
-    #             media = Media.objects.get(pk=pk)
-    #             serializer = MediaSerializer(media)
-    #             return Response(serializer.data, status=status.HTTP_200_OK)
-    #         except Media.DoesNotExist:
-    #             return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    #     # Simple pagination setup
-    #     paginator = PageNumberPagination()
-    #     paginator.page_size = 10 
-    #     queryset = Media.objects.all().order_by('-uploaded_at')
-    #     paginated_qs = paginator.paginate_queryset(queryset, request)
-    #     serializer = MediaSerializer(paginated_qs, many=True)
-    #     return paginator.get_paginated_response(serializer.data)
-
-
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
 
+        # Filter query parameters for team name and category
+        team_filter = request.query_params.get('team', None)
+        category_filter = request.query_params.get('category', None)
+
         # Check if the user is authenticated
         if user.is_authenticated:
-            # Check if the user is an admin (using is_staff for simplicity)
-            if user.is_staff:  # Admins should have is_staff set to True
-                # Admin can see all media files
+            if user.is_staff:  # Admins can view all media
                 media = Media.objects.all().order_by('-uploaded_at')
             else:
                 # Get the teams the current user is part of
                 user_teams = Team.objects.filter(users=user)
-
-                # Get the names of the teams the user is part of
                 team_names = [team.name for team in user_teams]
+                media = Media.objects.filter(team__in=team_names).order_by('-uploaded_at')
 
-                # Fetch all media related to the user's teams
-                team_media = Media.objects.filter(team__in=team_names).order_by('-uploaded_at')
+            # Apply team filter if provided
+            if team_filter and team_filter != "All Teams":
+                media = media.filter(team=team_filter)
 
-                # Combine all team media for the user
-                media = team_media
+            # Apply category filter if provided (e.g., "video", "audio", etc.)
+            if category_filter and category_filter != "All":
+                media = media.filter(tag=category_filter)
 
             # Apply pagination to the media queryset
             paginator = MediaPagination()
@@ -68,7 +151,6 @@ class MediaView(APIView):
         else:
             # If the user is not authenticated, return a 401 Unauthorized response
             return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
-
 
    
     def post(self, request):
@@ -153,8 +235,3 @@ class FileUploadReportView(APIView):
 
 
 
-
-class MediaPagination(PageNumberPagination):
-    page_size = 9  # Set the number of items per page
-    page_size_query_param = 'page_size'  # Allows the user to specify a custom page size (optional)
-    max_page_size = 100  # Optional: to limit the maximum number of items per page
