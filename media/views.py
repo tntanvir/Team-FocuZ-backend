@@ -206,12 +206,14 @@ class UserReportView(APIView):
         weekly_serializer = MediaSerializer(weekly_media, many=True)
         monthly_serializer = MediaSerializer(monthly_media, many=True)
         user_serializer = CustomUserSerializer(user)
+        total_approved = Media.objects.filter(user=user, approved=True).count()
         # Return all three reports in the response
         return Response({
             "user": user_serializer.data,
             "daily_report": {"count": daily_media.count(), "media": daily_serializer.data},
             "weekly_report": {"count": weekly_media.count(), "media": weekly_serializer.data},
-            "monthly_report": {"count": monthly_media.count(), "media": monthly_serializer.data}
+            "monthly_report": {"count": monthly_media.count(), "media": monthly_serializer.data},
+            "total_approved": total_approved
         }, status=status.HTTP_200_OK)
 
 
