@@ -10,45 +10,46 @@ from datetime import timedelta
 from rest_framework.permissions import IsAuthenticated
 
 class ReportAdminView(APIView):
-    permission_classes = [IsAuthenticated]
-
     
-    # def get(self, request):
-    #     today = timezone.now().date()
-    #     week_ago = today - timedelta(days=7)
-    #     month_ago = today - timedelta(days=30)
+    
+    def get(self, request):
+        today = timezone.now().date()
+        week_ago = today - timedelta(days=7)
+        month_ago = today - timedelta(days=30)
 
-    #     report = []
+        report = []
 
-    #     for team in Team.objects.all():
-    #         members = team.users.all()
-    #         media_qs = Media.objects.filter(user__in=members)
-    #         # appdata = Media.objects.filter(approved=True).count()
-    #         # print(appdata)
+        for team in Team.objects.all():
+            members = team.users.all()
+            media_qs = Media.objects.filter(user__in=members)
+            # appdata = Media.objects.filter(approved=True).count()
+            # print(appdata)
 
-    #         # Define a helper to filter by tag and time
-    #         def get_counts(tag):
-    #             tagged = media_qs.filter(tag=tag)
-    #             return {
-    #                 'daily': tagged.filter(uploaded_at__date=today).count(),
-    #                 'weekly': tagged.filter(uploaded_at__date__gte=week_ago).count(),
-    #                 'monthly': tagged.filter(uploaded_at__date__gte=month_ago).count(),
-    #                 # 'approved': tagged.filter(approved=True).count()
-    #             }
+            # Define a helper to filter by tag and time
+            def get_counts(tag):
+                tagged = media_qs.filter(tag=tag)
+                return {
+                    'daily': tagged.filter(uploaded_at__date=today).count(),
+                    'weekly': tagged.filter(uploaded_at__date__gte=week_ago).count(),
+                    'monthly': tagged.filter(uploaded_at__date__gte=month_ago).count(),
+                    # 'approved': tagged.filter(approved=True).count()
+                }
 
-    #         video_stats = get_counts('video')
-    #         script_stats = get_counts('script')
-    #         voice_stats = get_counts('voice')
+            video_stats = get_counts('video')
+            script_stats = get_counts('script')
+            voice_stats = get_counts('voice')
 
-    #         report.append({
-    #             'team_name': team.name,
-    #             'video_editor': video_stats,
-    #             'script_writer': script_stats,
-    #             'voice_artist': voice_stats,
-    #             # 'total_approved': appdata
-    #         })
+            report.append({
+                'team_name': team.name,
+                'video_editor': video_stats,
+                'script_writer': script_stats,
+                'voice_artist': voice_stats,
+                # 'total_approved': appdata
+            })
 
-    #     return Response(report)
+        return Response(report)
+class ReportManager(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         today = timezone.now().date()
         week_ago = today - timedelta(days=7)
