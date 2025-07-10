@@ -20,68 +20,6 @@ class MediaPagination(PageNumberPagination):
 
 class MediaView(APIView):
     permission_classes = [IsAuthenticated]
-
-    # def get(self, request):
-    #     user = request.user
-
-    #     # Filter query parameters for team name and category
-    #     team_filter = request.query_params.get('team', None)
-    #     category_filter = request.query_params.get('category', None)
-
-    #     # Check if the user is authenticated
-    #     if user.is_authenticated:
-    #         # Initialize the media queryset
-    #         media = Media.objects.all().order_by('-uploaded_at')
-
-    #         # Access control based on the user's role
-    #         if user.is_staff:  # Super Admin
-    #             # Super Admin can see all media
-    #             pass
-    #         elif user.role == "video editor":
-    #             # Video Editor should only see posts from the Super Admin for their team
-    #             media = media.filter(
-    #                 tag__in=['video', 'script', 'voice'],  # Allow Video, Script, and Voice media
-    #                 team__in=[team.name for team in Team.objects.filter(users=user)]  # Media from teams they belong to
-    #             )
-    #             # Video Editor can only see posts from the Super Admin for their team
-    #             media = media.filter(user__role="admin")
-    #         elif user.role == "script writer":
-    #             # Script Writer can see media tagged as 'script' for their teams
-    #             media = media.filter(
-    #                 tag='script',
-    #                 team__in=[team.name for team in Team.objects.filter(users=user)]
-    #             )
-    #         elif user.role == "voice artist":
-    #             # Voice Artist can see media tagged as 'voice' for their teams
-    #             media = media.filter(
-    #                 tag='voice',
-    #                 team__in=[team.name for team in Team.objects.filter(users=user)]
-    #             )
-    #         else:
-    #             # If user role is not recognized, return empty result
-    #             media = media.none()
-
-    #         # Apply team filter if provided
-    #         if team_filter and team_filter != "All Teams":
-    #             media = media.filter(team=team_filter)
-
-    #         # Apply category filter if provided (e.g., "video", "audio", etc.)
-    #         if category_filter and category_filter != "All":
-    #             media = media.filter(tag=category_filter)
-
-    #         # Apply pagination to the media queryset
-    #         paginator = MediaPagination()
-    #         paginated_media = paginator.paginate_queryset(media, request)
-
-    #         # Serialize the paginated media data
-    #         serializer = MediaSerializer(paginated_media, many=True)
-
-    #         # Return the paginated response
-    #         return paginator.get_paginated_response(serializer.data)
-
-    #     else:
-    #         # If the user is not authenticated, return a 401 Unauthorized response
-    #         return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
     def get(self, request):
         user = request.user
 
@@ -185,12 +123,56 @@ class MediaView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request, pk):
-        data = Media.objects.get(pk=pk)
-        serializer = MediaSerializer(data, request.data, partial=True)
+    # def put(self, request, pk):
+    #     data = Media.objects.get(pk=pk)
+    #     serializer = MediaSerializer(data, request.data, partial=True)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response(serializer.data, status=status.HTTP_200_OK)
+    # def patch(self, request, pk):
+    #     # Retrieve the Media object by primary key
+    #     try:
+    #         media_instance = Media.objects.get(pk=pk)
+    #     except Media.DoesNotExist:
+    #         return Response({"detail": "Media not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+    #     # Serialize the data and allow partial updates
+    #     serializer = MediaSerializer(media_instance, data=request.data, partial=True)
+
+    #     # Validate the data
+    #     if serializer.is_valid():
+    #         # Save the updated data
+    #         serializer.save()
+
+    #         # Return the updated data with a successful response
+    #         return Response(serializer.data, status=status.HTTP_200_OK)
+        
+    #     # Return error if validation fails
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def patch(self, request, pk):
+        # Check if the user is an admin
+        if not request.user.is_staff:
+            return Response({"detail": "You do not have permission to update this media."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Retrieve the Media object by primary key
+        try:
+            media_instance = Media.objects.get(pk=pk)
+        except Media.DoesNotExist:
+            return Response({"detail": "Media not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Serialize the data and allow partial updates
+        serializer = MediaSerializer(media_instance, data=request.data, partial=True)
+
+        # Validate the data
         if serializer.is_valid():
+            # Save the updated data
             serializer.save()
+
+            # Return the updated data with a successful response
             return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # Return error if validation fails
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, pk):
         data = Media.objects.get(pk=pk)
@@ -234,71 +216,7 @@ class UserReportView(APIView):
 
 
 class FileUploadReportView(APIView):
-    # def get(self, request):
-    #     today = now().date()
-
-    #     # 📅 Daily Reports (last 7 days)
-    #     last_7_days = [today - timedelta(days=i) for i in range(7)]
-    #     daily_data = {
-    #         str(day): DailyReport.objects.filter(date=day).first().file_count
-    #         if DailyReport.objects.filter(date=day).exists() else 0
-    #         for day in reversed(last_7_days)
-    #     }
-
-    #     # 📈 Weekly Reports (last 6 weeks)
-    #     weekly_reports = WeeklyReport.objects.order_by('-week')[:6]
-    #     weekly_data = {report.week: report.file_count for report in reversed(weekly_reports)}
-
-    #     # 📊 Monthly Reports (last 6 months)
-    #     monthly_reports = MonthlyReport.objects.order_by('-month')[:6]
-    #     monthly_data = {report.month: report.file_count for report in reversed(monthly_reports)}
-
-    #     return Response({
-    #         "daily": daily_data,
-    #         "weekly": weekly_data,
-    #         "monthly": monthly_data,
-    #     }, status=status.HTTP_200_OK)
-
-    #  def get(self, request):
-    #     today = now().date()
-
-    #     # 📅 Daily Reports (last 7 days)
-    #     last_7_days = [today - timedelta(days=i) for i in range(7)]
-    #     daily_data = {
-    #         str(day): DailyReport.objects.filter(date=day).first().file_count
-    #         if DailyReport.objects.filter(date=day).exists() else 0
-    #         for day in reversed(last_7_days)
-    #     }
-
-    #     # 📈 Weekly Reports (last 6 weeks)
-    #     weekly_reports = WeeklyReport.objects.order_by('-week')[:6]
-    #     weekly_data = {report.week: report.file_count for report in reversed(weekly_reports)}
-
-    #     # 📊 Monthly Reports (last 6 months)
-    #     monthly_reports = MonthlyReport.objects.order_by('-month')[:6]
-    #     monthly_data = {report.month: report.file_count for report in reversed(monthly_reports)}
-
-    #     # 🏆 Total Teams, Files, and Videos
-    #     total_teams = Team.objects.count()
-    #     total_files = Media.objects.count()
-    #     total_videos = Media.objects.filter(tag="video").count()
-
-    #     # 🆕 Today's Newly Created Teams, Files, and Videos
-    #     today_new_teams = Team.objects.filter(created_at=today).count()
-    #     today_new_files = Media.objects.filter(uploaded_at__date=today).count()
-    #     today_new_videos = Media.objects.filter(uploaded_at__date=today, tag="video").count()
-
-    #     return Response({
-    #         "daily": daily_data,
-    #         "weekly": weekly_data,
-    #         "monthly": monthly_data,
-    #         "total_teams": total_teams,
-    #         "total_files": total_files,
-    #         "total_videos": total_videos,
-    #         "today_new_teams": today_new_teams,
-    #         "today_new_files": today_new_files,
-    #         "today_new_videos": today_new_videos,
-    #     }, status=status.HTTP_200_OK)
+    
     def get(self, request):
         today = now().date()
 

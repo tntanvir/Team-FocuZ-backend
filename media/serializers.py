@@ -6,5 +6,5 @@ class MediaSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer(read_only=True)
     class Meta:
         model = Media
-        fields = ['id','user', 'title','team',  'file','tag', 'uploaded_at']
+        fields = ['id','user', 'title','team',  'file','tag','approved','download_count', 'uploaded_at']
         read_only_fields = ['id', 'uploaded_at']  

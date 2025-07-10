@@ -5,8 +5,95 @@ from rest_framework.response import Response
 from team_managements.models import Team
 from media.models import Media
 from rest_framework import status
+from django.utils import timezone
+from datetime import timedelta
+from rest_framework.permissions import IsAuthenticated
 
+class ReportAdminView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    
+    # def get(self, request):
+    #     today = timezone.now().date()
+    #     week_ago = today - timedelta(days=7)
+    #     month_ago = today - timedelta(days=30)
+
+    #     report = []
+
+    #     for team in Team.objects.all():
+    #         members = team.users.all()
+    #         media_qs = Media.objects.filter(user__in=members)
+    #         # appdata = Media.objects.filter(approved=True).count()
+    #         # print(appdata)
+
+    #         # Define a helper to filter by tag and time
+    #         def get_counts(tag):
+    #             tagged = media_qs.filter(tag=tag)
+    #             return {
+    #                 'daily': tagged.filter(uploaded_at__date=today).count(),
+    #                 'weekly': tagged.filter(uploaded_at__date__gte=week_ago).count(),
+    #                 'monthly': tagged.filter(uploaded_at__date__gte=month_ago).count(),
+    #                 # 'approved': tagged.filter(approved=True).count()
+    #             }
+
+    #         video_stats = get_counts('video')
+    #         script_stats = get_counts('script')
+    #         voice_stats = get_counts('voice')
+
+    #         report.append({
+    #             'team_name': team.name,
+    #             'video_editor': video_stats,
+    #             'script_writer': script_stats,
+    #             'voice_artist': voice_stats,
+    #             # 'total_approved': appdata
+    #         })
+
+    #     return Response(report)
+    def get(self, request):
+        today = timezone.now().date()
+        week_ago = today - timedelta(days=7)
+        month_ago = today - timedelta(days=30)
+
+        report = []
+
+        # Get the team for the current user
+        user_team = Team.objects.filter(users=request.user).first()
+
+        if not user_team:
+            return Response({"error": "User is not part of any team"}, status=404)
+
+        # Get the members of the user's team
+        members = user_team.users.all()
+
+        # Filter media based on the team's users
+        media_qs = Media.objects.filter(user__in=members)
+
+        # Define a helper function to get counts for each tag
+        def get_counts(tag):
+            tagged = media_qs.filter(tag=tag)
+            return {
+                'daily': tagged.filter(uploaded_at__date=today).count(),
+                'weekly': tagged.filter(uploaded_at__date__gte=week_ago).count(),
+                'monthly': tagged.filter(uploaded_at__date__gte=month_ago).count(),
+            }
+
+        # Get statistics for video, script, and voice
+        video_stats = get_counts('video')
+        script_stats = get_counts('script')
+        voice_stats = get_counts('voice')
+
+        # Append data for the team to the report
+        report.append({
+            'team_name': user_team.name,
+            'video_editor': video_stats,
+            'script_writer': script_stats,
+            'voice_artist': voice_stats,
+        })
+
+        return Response(report)
+    
+ 
+    
 
 
 

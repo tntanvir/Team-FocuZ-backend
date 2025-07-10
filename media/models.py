@@ -8,6 +8,8 @@ class Media(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     tag = models.CharField(max_length=100,choices=[('video','Video'),('script','Script'),('voice','Voice')], null=True, blank=True)
     team = models.CharField(max_length=100, null=True, blank=True)
+    approved = models.BooleanField(default=False)
+    download_count = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.title
