@@ -5,7 +5,7 @@ from .models import Media,DailyReport,WeeklyReport, MonthlyReport
 
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
-    list_display = ('title',  'file', 'uploaded_at')
+    list_display = ('title',  'file','team', 'uploaded_at')
 
 @admin.register(DailyReport)
 class DailyReportAdmin(admin.ModelAdmin):

@@ -12,100 +12,90 @@ from team_managements.models import Team
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from django.utils import timezone
 from account.serializers import CustomUserSerializer
-
 class MediaPagination(PageNumberPagination):
-    page_size = 9  # Set the number of items per page
-    page_size_query_param = 'page_size'  # Allows the user to specify a custom page size (optional)
-    max_page_size = 100  # Optional: to limit the maximum number of items per page
-
+    page_size = 9
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 class MediaView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         user = request.user
-
-        # Filter query parameters for team name and category
         team_filter = request.query_params.get('team', None)
+        
         category_filter = request.query_params.get('category', None)
 
-        # Check if the user is authenticated
         if user.is_authenticated:
-            # Initialize the media queryset
             media = Media.objects.all().order_by('-uploaded_at')
 
-            # Access control based on the user's role
-            if user.is_staff:  # Super Admin
-                # Super Admin can see all media
+            if user.is_staff:
                 pass
             elif user.role == "video editor":
-                # Video Editor can only see Super Admin's posts
                 media = media.filter(
                     team__in=[team.name for team in Team.objects.filter(users=user)],
-                    user__role="admin"  # Only see posts made by Super Admin
+                    user__role="admin"
                 )
             elif user.role == "script writer":
-                # Script Writer can see Super Admin's, Video Editor's, and Voice Artist's posts
                 media = media.filter(
                     team__in=[team.name for team in Team.objects.filter(users=user)],
-                    tag__in=['video', 'script', 'voice'],  # Script Writer can see all media types
+                    tag__in=['video', 'script', 'voice']
                 )
-                # Exclude their own posts (Script Writer's posts)
                 media = media.exclude(user__role="script writer")
             elif user.role == "voice artist":
-                # Voice Artist can see Super Admin's and Video Editor's posts
                 media = media.filter(
                     team__in=[team.name for team in Team.objects.filter(users=user)],
-                    tag__in=['video', 'voice','script'],  # Voice Artist can see video and voice media
+                    tag__in=['video', 'voice', 'script']
                 )
-                # Exclude Script Writer's posts
                 media = media.exclude(user__role="script writer")
-                # Exclude their own posts (Voice Artist's posts)
                 media = media.exclude(user__role="voice artist")
+            elif user.role == "manager":
+                teams_of_user = Team.objects.filter(users=user)
+                media = media.filter(
+                    team__in=[team.id for team in teams_of_user],
+                    tag='video'
+                )
             else:
-                # If user role is not recognized, return empty result
                 media = media.filter(tag='video')
 
-            # Apply team filter if provided
             if team_filter and team_filter != "All Teams":
                 media = media.filter(team=team_filter)
 
-            # Apply category filter if provided (e.g., "video", "audio", etc.)
             if category_filter and category_filter != "All":
                 media = media.filter(tag=category_filter)
 
-            # Apply pagination to the media queryset
             paginator = MediaPagination()
             paginated_media = paginator.paginate_queryset(media, request)
 
-            # Serialize the paginated media data
             serializer = MediaSerializer(paginated_media, many=True)
 
-            # Return the paginated response
             return paginator.get_paginated_response(serializer.data)
 
         else:
-            # If the user is not authenticated, return a 401 Unauthorized response
             return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
 
-
-
-   
     def post(self, request):
         user = request.user
         file_url = request.data.get('file')
         title = request.data.get('title')
         tag = request.data.get('tag')
         team = request.data.get('team')
-
-        # Ensure all fields are provided and valid
+        
+        # Ensure all required fields are provided
         if not file_url or not title or not tag:
             return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check the file extension based on role
+        # Validate file extension based on user role
         role = user.role
         if role == 'script writer' and not file_url.endswith('.txt'):
             return Response({"error": "Script Writers can only upload text files."}, status=status.HTTP_400_BAD_REQUEST)
         elif role == 'voice artist' and not file_url.endswith(('.mp3', '.wav', '.aac')):
             return Response({"error": "Voice Artists can only upload audio files."}, status=status.HTTP_400_BAD_REQUEST)
+        elif role == 'video editor' and not file_url.endswith(('.mp4', '.mov')):
+            return Response({"error": "Video Editors can only upload video files."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the file URL is a valid link (just for extra precaution)
+        if not file_url.startswith("https://"):
+            return Response({"error": "Invalid file URL."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Create the Media object and save
         media_payload = {
@@ -113,42 +103,54 @@ class MediaView(APIView):
             'title': title,
             'tag': tag,
             'file': file_url,
-            'team': team if team else None,  
+            'team': team if team else None,
         }
 
+        # Serializing the data
         serializer = MediaSerializer(data=media_payload)
         if serializer.is_valid():
             serializer.save(user=user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+        # If serializer fails
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # def put(self, request, pk):
-    #     data = Media.objects.get(pk=pk)
-    #     serializer = MediaSerializer(data, request.data, partial=True)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data, status=status.HTTP_200_OK)
-    # def patch(self, request, pk):
-    #     # Retrieve the Media object by primary key
-    #     try:
-    #         media_instance = Media.objects.get(pk=pk)
-    #     except Media.DoesNotExist:
-    #         return Response({"detail": "Media not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-    #     # Serialize the data and allow partial updates
-    #     serializer = MediaSerializer(media_instance, data=request.data, partial=True)
+   
+    # def post(self, request):
+    #     user = request.user
+    #     file_url = request.data.get('file')
+    #     title = request.data.get('title')
+    #     tag = request.data.get('tag')
+    #     team = request.data.get('team')
+    #     print(file_url,title,tag,team)
 
-    #     # Validate the data
-    #     if serializer.is_valid():
-    #         # Save the updated data
-    #         serializer.save()
+    #     # Ensure all fields are provided and valid
+    #     if not file_url or not title or not tag:
+    #         return Response({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
 
-    #         # Return the updated data with a successful response
-    #         return Response(serializer.data, status=status.HTTP_200_OK)
-        
-    #     # Return error if validation fails
+    #     # Check the file extension based on role
+    #     role = user.role
+    #     if role == 'script writer' and not file_url.endswith('.txt'):
+    #         return Response({"error": "Script Writers can only upload text files."}, status=status.HTTP_400_BAD_REQUEST)
+    #     elif role == 'voice artist' and not file_url.endswith(('.mp3', '.wav', '.aac')):
+    #         return Response({"error": "Voice Artists can only upload audio files."}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     # Create the Media object and save
+    #     media_payload = {
+    #         'user': user.id,
+    #         'title': title,
+    #         'tag': tag,
+    #         'file': file_url,
+    #         'team': team if team else None,  
+    #     }
+
+    #     serializer = MediaSerializer(data=media_payload)
+    #     if serializer.is_valid():
+    #         serializer.save(user=user)
+    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def patch(self, request, pk):
         # Check if the user is an admin
         if not request.user.is_staff:
